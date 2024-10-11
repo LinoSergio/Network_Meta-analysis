@@ -1,18 +1,31 @@
-pacman::p_load(tidyverse,netmeta,meta,metafor, dmetar,DataEditR)
+# Loading required packages
+
+pacman::p_load(tidyverse,netmeta,meta,metafor, rio)
 options(digits = 2)
 
 # Mortality analysis
 
-df <- read.csv2(file.choose())
+## Datasheet
+
+df <- read.csv2(file = "DAC-intensity-networkmeta_files/Mort_DAC.csv")
+
+## Pairwise meta-analysis
 
 p1 <- pairwise(data = df, treat = Grupo, event = Eventos, n = n, studlab = Estudo,
                sm = "RR")
 
-nb <- netmeta(p1, reference.group = "Control", details.chkmultiarm = TRUE)
+## Netowork meta-analysis
+
+nb <- netmeta(p1, reference.group = "Control", details.chkmultiarm = TRUE, 
+              small.values = 'desirable')
+
+## Pairwise meta-analysis forest plot
 
 forest(nb, smlab = paste("Different exercise intensities \n","for mortality in CAD \n"),
        label.left = "Favours to Exercise",
-       label.right = "Favours to Control", drop.reference.group = TRUE)
+       label.right = paste("Favours to Control (No Exercise)"), drop.reference.group = TRUE)
+
+## Network meta-analysis forest plot
 
 netgraph(nb, seq = "optimal", number.of.studies = TRUE, plastic = FALSE, cex.points = 3,
          col.number.of.studies = "white",
@@ -24,9 +37,15 @@ netgraph(nb, seq = "optimal", number.of.studies = TRUE, plastic = FALSE, cex.poi
                          ifelse(trts %in% c("Control", "HICT"), 0.065, 0.035)),
          labels = paste0(trts, "\n(n = ", n.trts, ")"), points.max = 8)
 
-Rank <- rankogram(nb,small.values = "good")
+## Rankogram analysis (mortality outcome)
 
-plot(Rank)
+rank <- rankogram(nb, cumulative.rankprob = TRUE, small.values = 'good')
+
+plot(rank)
+
+print(Rank)
+
+## Comparing and visualizing direct and indirect treatment effects
 
 netsplit(nb) |> forest()
 
@@ -41,6 +60,9 @@ df2 <- df2 %>%
   rename(Group = GRUPO)
 
 ## Conventional meta-analysis
+
+df2 <- df2 |> 
+  mutate(se = sd/sqrt(n))
 
 m1 <- metacont(data = df2, subgroup = Group, mean.e = media_2, mean.c = media_1,
                sd.e = dp_2, sd.c = dp_1, n.e = n2, n.c = n1, studlab = paste(Estudo))
@@ -63,23 +85,37 @@ forest(net2, smlab = paste("Different exercise intensities \n","for Peak VO2 in 
 
 ## Network graph
 
-netgraph(net2, seq = "optimal", number.of.studies = TRUE, plastic = FALSE, cex.points = n.trts,
+netgraph(net2, seq = "optimal", number.of.studies = TRUE, plastic = FALSE, cex.points = 3,
          col.number.of.studies = "white",
          col.multiarm = "white",
          col = "gray",
-         col.points = "#454545",
+         col.points = "black",
          thickness = 'equal',
          offset = ifelse(trts == "UC", 0.07, 
                          ifelse(trts %in% c("Control", "HICT", "MICT", "HIIT"), 0.065, 0.035)),
          labels = paste0(trts, "\n(n = ", n.trts, ")"))
 
+# Forest plot sorted by SUCRA
+
+forest(net2, sortvar = sucra, drop.reference.group = TRUE,
+       label.right = 'Favours to Exercise', 
+       label.left = 'Favours to Usual Care',
+       smlab = 'Diferent in Exercise intensities \n by SUCRA')
+
 # Rankogram
+
+rg2 <- rankogram(net2, cumulative.rankprob = TRUE, small.values = 'bad')
+
+plot(rg2)
 
 rank2 <- netrank(net2, small.values = "bad")
 
 plot(rank2)
 
-## Funnel Plot
+netleague(net2, bracket = '(',
+          digits = 2,
+          path = 'leaguetable.xlsx')
+## Funnel Plot## Fudf2nnel Plot
 
 funnel(net2, order = c("HICT", "HIIT", "LICT", "UC","MICT"), 
        linreg = TRUE,
@@ -90,20 +126,32 @@ funnel(net2, order = c("HICT", "HIIT", "LICT", "UC","MICT"),
 
 netsplit(net2) |> forest()
 
+
+# Bayesian Met-analysis
+
+rd <- data(TherapyFormatsGeMTC)
+
+
+armData <- data.frame(study = df2$Estudo,
+                      treatment = df2$Group,
+                      mean = df2$mean,
+                      st.e = df2$se)
+
+network <- mtc.network(data.ab = armData)
+
+summary(network)
+
+plot(network, vertex.color = 'white',
+     vertex.label.dist = 3,
+     vertex.label.cex = 1.5,
+     edge.curve = .2,
+     vertex.shape = 'sphere')
+
 # Quality of life analysis
 
 ## Importing the data frame
 
-df3 <- readxl::read_excel(file.choose())
-
-## Feature engineering
-
-df3$dp1 <- as.numeric(df3$dp1)
-df3$dp2 <- as.numeric(df3$dp2)
-df3$dp <- as.numeric(df3$dp)
-
-df3 <- df3 |> 
-  drop_na()
+df3 <- read_csv2(file.choose())
 
 ## Meta-analysis
 
@@ -128,7 +176,11 @@ forest(net3, smlab = paste("Different exercise intensities \n","for Quality of L
 
 ## Network graph
 
-netgraph(net3, seq = "optimal", number.of.studies = TRUE, plastic = FALSE, cex.points = n.trts, col.points = "grey",
+netgraph(net3, seq = "optimal", number.of.studies = TRUE, plastic = FALSE, cex.points = 3, col.number.of.studies = "white",
+         col.multiarm = "white",
+         col = "gray",
+         col.points = "black",
+         thickness = 'equal',
          offset = ifelse(trts == "UC", 0.07, 
                          ifelse(trts %in% c("Control", "HICT", "MICT", "HIIT"), 0.065, 0.035)),
          labels = paste0(trts, "\n(n = ", n.trts, ")"))
@@ -139,9 +191,48 @@ netsplit(net3) |> forest()
 
 ## Rankogram
 
-rank3 <- netrank(net3, small.values = "bad")
+rank3 <- rankogram(net3, cumulative.rankprob = TRUE, small.values = "bad")
 
 plot(rank3)
 
 
+# Isolated analysis for HIIT in coronary artery disease.
+
+## VO2 analysis - High-intensity interval training
+
+df4 <- df2 |> 
+  filter(Group == "HIIT")
+
+g1 <- metacont(data = df4, mean.e = media_2, mean.c = media_1,
+               sd.e = dp_2, sd.c = dp_1, n.e = n2, n.c = n1, studlab = paste(Estudo))  
+
+forest(g1, width = 20, common = FALSE, 
+       layout = "Revman",
+       digits = 1, xlim = c(-15,15),
+       digits.sd = 1, digits.mean = 1,
+       label.right = 'Favours to HIIT',
+       label.left = 'Favours to No exercise')
+
+## Quality of Life - High-intensity interval training 
+
+df5 <- df3 |> 
+  filter(Grupo == "HIIT") |> 
+  rename(Group = Grupo)
+
+g2 <- metacont(data = df5, mean.e = m2, mean.c = m1,
+               sd.e = dp2, sd.c = dp1, n.e = n, n.c = n2,
+               studlab = paste(Estudo),
+               sm = "SMD")
+
+forest(g2, width = 20, common = FALSE, layout = "Revman",
+       digits = 1, xlim = c(-5,5),
+       digits.sd = 1, digits.mean = 1,
+       label.right = "Favours to HIIT",
+       label.left = 'Favours to No exercise')
+
+## Funnel Plot
+
+funnel(g1)
+
+funnel(g2)
 
