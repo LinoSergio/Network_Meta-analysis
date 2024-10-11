@@ -7,7 +7,7 @@ options(digits = 2)
 
 ## Datasheet
 
-df <- read.csv2(file = "DAC-intensity-networkmeta_files/Mort_DAC.csv")
+df <- read.csv2(file.choose())
 
 ## Pairwise meta-analysis
 
