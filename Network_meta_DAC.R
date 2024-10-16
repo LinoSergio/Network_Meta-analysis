@@ -56,7 +56,7 @@ netsplit(nb) |> forest()
 df2 <- read.csv(file.choose())
 df2$X <- NULL
 
-df2 <- df2 %>% 
+df2 <- df2 |>  
   rename(Group = GRUPO)
 
 ## Conventional meta-analysis
@@ -83,6 +83,13 @@ net2 <- netmeta(p2, reference.group = "UC", sep.trts = " vs. ", fixed = FALSE, r
 forest(net2, smlab = paste("Different exercise intensities \n","for Peak VO2 in CAD \n"),label.left = "Favours to Control",
        label.right = "Favours to Exercise", drop.reference.group = TRUE)
 
+# Forest plot sorted by SUCRA
+
+forest(net2, sortvar = sucra, drop.reference.group = TRUE,
+       label.right = 'Favours to Exercise', 
+       label.left = 'Favours to Usual Care',
+       smlab = 'Diferent in Exercise intensities \n by SUCRA')
+
 ## Network graph
 
 netgraph(net2, seq = "optimal", number.of.studies = TRUE, plastic = FALSE, cex.points = 3,
@@ -95,12 +102,6 @@ netgraph(net2, seq = "optimal", number.of.studies = TRUE, plastic = FALSE, cex.p
                          ifelse(trts %in% c("Control", "HICT", "MICT", "HIIT"), 0.065, 0.035)),
          labels = paste0(trts, "\n(n = ", n.trts, ")"))
 
-# Forest plot sorted by SUCRA
-
-forest(net2, sortvar = sucra, drop.reference.group = TRUE,
-       label.right = 'Favours to Exercise', 
-       label.left = 'Favours to Usual Care',
-       smlab = 'Diferent in Exercise intensities \n by SUCRA')
 
 # Rankogram
 
