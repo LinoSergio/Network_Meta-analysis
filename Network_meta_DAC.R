@@ -1,6 +1,6 @@
 # Loading required packages
 
-pacman::p_load(tidyverse,netmeta,meta,metafor, rio)
+pacman::p_load(tidyverse,netmeta,meta,metafor,rio,dmetar)
 options(digits = 2)
 
 # Mortality analysis
@@ -18,6 +18,8 @@ p1 <- pairwise(data = df, treat = Grupo, event = Eventos, n = n, studlab = Estud
 
 nb <- netmeta(p1, reference.group = "Control", details.chkmultiarm = TRUE, 
               small.values = 'desirable')
+
+summary(nb)
 
 ## Pairwise meta-analysis forest plot
 
@@ -48,6 +50,10 @@ print(Rank)
 ## Comparing and visualizing direct and indirect treatment effects
 
 netsplit(nb) |> forest()
+
+# Direct evidence plot
+
+direct.evidence.plot(nb)
 
 # VO2 analysis
 
